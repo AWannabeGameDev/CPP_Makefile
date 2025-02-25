@@ -1,96 +1,93 @@
 # Just change these variables and everything just magically works :D
+# Make sure there are no leading or trailing white spaces in the value of these variables
 
-# TODO: Handle subproject dependencies properly
+srcDirs=
+incDirs=
+libDirs=
+intermDir=
 
-srcDirs = src
-incDirs = ..\dependencies\include
-libDirs = ..\dependencies\lib "C:\Program^Files^(x86)\Windows^Kits\10\Lib\10.0.26100.0\um\x64"
-intermDir = interms
+libFilesDebug=
+libFilesRelease=
 
-libFilesDebug = utility\utility_debug.lib GLFW\libglfw3.a Gdi32.lib
-libFilesRelease = utility\utility_release.lib GLFW\libglfw3.a Gdi32.lib
+projectFolder=
+subProjDeps=
 
-projectFolder = ..
-subProjDeps = utility
+outDebug=
+outRelease=
 
-outDebug = bin\advanced_debug.exe
-outRelease = bin\advanced_release.exe
-
-preDefinesDebug = _DEBUG
-preDefinesRelease =  
+preDefinesDebug=
+preDefinesRelease=
 
 #-----------------------------------------------------------------------
 
-CC = ccache g++
+CC=ccache g++
 
-empty = 
+srcs=$(foreach dir,$(srcDirs),$(wildcard $(dir)/*.cpp) )
 
-srcs = $(foreach dir, $(srcDirs), $(wildcard $(dir)/*.cpp))
-
-depFlags = -MP -MD
-incFlags = $(foreach dir, $(incDirs), -I$(dir))
-linkFlags = $(foreach dir, $(libDirs), $(subst ^, $(empty), -L$(dir)))
+depFlags=-MP -MD
+incFlags=$(foreach dir,$(incDirs),-I$(dir) )
+linkFlags=$(foreach dir,$(libDirs),$(subst ^, ,-L$(dir)) )
 
 #------------------------------------------------------------------------
 
-preDefDebugFlags = $(foreach def, $(preDefinesDebug), -D$(def))
-preDefReleaseFlags = $(foreach def, $(preDefinesRelease), -D$(def))
+preDefDebugFlags=$(foreach def,$(preDefinesDebug),-D$(def) )
+preDefReleaseFlags=$(foreach def,$(preDefinesRelease),-D$(def) )
 
-libFilesDebugFlag = $(foreach file, $(libFilesDebug), -l:$(file))
-libFilesReleaseFlag = $(foreach file, $(libFilesRelease), -l:$(file))
+libFilesDebugFlag=$(foreach file,$(libFilesDebug),-l:$(file) )
+libFilesReleaseFlag=$(foreach file,$(libFilesRelease),-l:$(file) )
 
-debugOptim = -O0
-releaseOptim = -O2
+debugOptim=-O0
+releaseOptim=-O2
 
-debugCompFlags = -g $(incFlags) $(preDefDebugFlags) $(debugOptim) $(depFlags) -std=c++20
-releaseCompFlags = $(incFlags) $(preDefReleaseFlags) $(releaseOptim) $(depFlags) -std=c++20
+debugCompFlags=-g $(incFlags) $(preDefDebugFlags) $(debugOptim) $(depFlags) -std=c++20
+releaseCompFlags=$(incFlags) $(preDefReleaseFlags) $(releaseOptim) $(depFlags) -std=c++20
 
-debugIntermDir = $(intermDir)\debug
-releaseIntermDir = $(intermDir)\release
+debugIntermDir=$(intermDir)\debug
+releaseIntermDir=$(intermDir)\release
 
-debugObjs = $(patsubst %.cpp, $(debugIntermDir)/%.o, $(srcs))
-releaseObjs = $(patsubst %.cpp, $(releaseIntermDir)/%.o, $(srcs))
+debugObjs=$(patsubst %.cpp,$(debugIntermDir)/%.o,$(srcs))
+releaseObjs = $(patsubst %.cpp,$(releaseIntermDir)/%.o,$(srcs))
 
-debugDeps = $(patsubst %.cpp, $(debugIntermDir)/%.d, $(srcs))
-releaseDeps = $(patsubst %.cpp, $(releaseIntermDir)/%.d, $(srcs))
+debugDeps=$(patsubst %.cpp,$(debugIntermDir)/%.d,$(srcs))
+releaseDeps=$(patsubst %.cpp,$(releaseIntermDir)/%.d,$(srcs))
 
 #--------------------------------------------------------------------
 
-debug: makeTarget = debug
-debug: libFilesFlag = $(libFilesDebugFlag)
-debug: compFlags = $(debugCompFlags)
+debug:makeTarget=debug
+debug:libFilesFlag=$(libFilesDebugFlag)
+debug:compFlags=$(debugCompFlags)
 
-release: makeTarget = release
-release: libFilesFlag = $(libFilesReleaseFlag)
-release: compFlags = $(releaseCompFlags)
+release:makeTarget=release
+release:libFilesFlag=$(libFilesReleaseFlag)
+release:compFlags=$(releaseCompFlags)
 
 #---------------------------------------------------------------------
 
-.PHONY: debug release test gendirs clean $(subProjDeps)
+.PHONY:debug release test gendirs clean $(subProjDeps)
 
-debug: gendirs $(outDebug)
-release: gendirs $(outRelease)
+debug:gendirs $(outDebug)
+release:gendirs $(outRelease)
 
-gendirs: 
+gendirs:
 	@for %%x in ($(srcDirs)) do if not exist $(debugIntermDir)\%%x mkdir $(debugIntermDir)\%%x
 	@for %%x in ($(srcDirs)) do if not exist $(releaseIntermDir)\%%x mkdir $(releaseIntermDir)\%%x
 
 define buildExecutable
 	@echo Building $@
-	@$(CC) $(linkFlags) -o $@ $(filter-out $(subProjDeps), $^) $(libFilesFlag)
-endef 
+	@$(CC) $(linkFlags) -o $@ $(filter-out $(subProjDeps),$^) $(libFilesFlag)
+endef
 
-$(outDebug): $(subProjDeps) $(debugObjs) ; $(buildExecutable)
-$(outRelease): $(subProjDeps) $(releaseObjs) ; $(buildExecutable)
+$(outDebug):$(subProjDeps) $(debugObjs) ; $(buildExecutable)
+$(outRelease):$(subProjDeps) $(releaseObjs) ; $(buildExecutable)
 
 $(subProjDeps):
-	@make $(makeTarget) -s -C $(projectFolder)\$@ 
+	@make $(makeTarget) -s -C $(projectFolder)\$@
 
-$(debugIntermDir)/%.o $(releaseIntermDir)/%.o: %.cpp
+$(debugIntermDir)/%.o $(releaseIntermDir)/%.o:%.cpp
 	@echo Compiling $<
 	@$(CC) $(compFlags) -c -o $@ $<
 
-clean: 
+clean:
 	@if exist $(intermDir) rmdir /s /q $(intermDir)
 	@if exist $(outDebug) del /q $(outDebug)
 	@if exist $(outRelease) del /q $(outRelease)
